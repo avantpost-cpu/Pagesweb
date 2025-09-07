@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Retrouvez les facteurs de risque</title>
+<style>
+body {
+  font-family: sans-serif;
+  text-align: center;
+  background-color: white; /* ✅ Fond blanc */
+}
+
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 40px;
+  margin-top: 20px;
+}
+
+table { 
+  border-collapse: collapse; 
+}
+
+td { 
+  width: 35px; 
+  height: 35px; 
+  text-align: center; 
+  vertical-align: middle; 
+  border: 1px solid #333; 
+  font-size: 18px; 
+  cursor: pointer; 
+  user-select: none; 
+  background-color: #999f53; 
+  color: black; 
+}
+
+td.selected { background-color: #d7e8f3; } 
+td.found { background-color: #f2b139; color: white; } 
+
+#title {
+  color: black; /* ✅ pour que ça ressorte sur fond blanc */
+  font-family: 'Lexend Exa', sans-serif;
+  margin-bottom: 20px;
+}
+
+#side {
+  text-align: center;
+  color: black; /* ✅ texte en noir sur fond blanc */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%; 
+}
+
+#timer {
+  color: black; /* ✅ timer en noir */
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+
+#score {
+  margin-bottom: 10px;
+}
+
+#end-message {
+  color: #f2b139;
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+
+#words p.found-word { 
+  text-decoration: line-through; 
+  color: #f2b139; 
+}
+
+#show-solution {
+  background-color: #60acb9;
+  border: none;
+  color: white;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-size: 16px;
+  cursor: pointer;
+  margin-top: 20px;
+}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Lexend+Exa&display=swap" rel="stylesheet">
+</head>
+<body>
+<h1 id="title">Retrouvez les facteurs de risque</h1>
+
+<div class="container">
+  <table id="grid"></table>
+
+  <div id="side">
+    <div id="timer">Temps restant : 01:00</div>
+    <div id="score">Mots trouvés : 0 / 5</div>
+    <div id="end-message"></div>
+    <div id="words"></div>
+    <button id="show-solution">Afficher la solution</button>
+  </div>
+</div>
+
+<script>
+window.onload = function() {
+  const words = ["AGE","OMERTA","HANDICAP","GENRE","NIVEAU"];
+  const size = 12;
+  let foundCount = 0;
+  let selectedCells = [];
+
+  const grid = Array.from({length:size}, ()=>Array(size).fill(''));
+
+  function placeWord(word){
+    const directions = [[0,1],[1,0]];
+    for(let attempt=0; attempt<100; attempt++){
+      const dir = directions[Math.floor(Math.random()*directions.length)];
+      const row = Math.floor(Math.random()*size);
+      const col = Math.floor(Math.random()*size);
+      let fits = true;
+      for(let i=0;i<word.length;i++){
+        const r = row+i*dir[0], c = col+i*dir[1];
+        if(r<0||r>=size||c<0||c>=size||(grid[r][c]!=='' && grid[r][c]!==word[i])){fits=false; break;}
+      }
+      if(fits){
+        for(let i=0;i<word.length;i++){
+          const r = row+i*dir[0], c = col+i*dir[1];
+          grid[r][c] = word[i];
+        }
+        return true;
+      }
+    }
+    console.warn("Impossible de placer le mot "+word);
+    return false;
+  }
+  words.forEach(placeWord);
+
+  for(let r=0;r<size;r++){
+    for(let c=0;c<size;c++){
+      if(grid[r][c]==='') grid[r][c]=String.fromCharCode(65+Math.floor(Math.random()*26));
+    }
+  }
+
+  const table = document.getElementById('grid');
+  grid.forEach((row,r)=>{
+    const tr = document.createElement('tr');
+    row.forEach((letter,c)=>{
+      const td = document.createElement('td');
+      td.textContent = letter;
+      td.dataset.row = r;
+      td.dataset.col = c;
+      td.addEventListener('click', ()=>{
+        if(td.classList.contains('found')) return;
+        if(td.classList.contains('selected')){
+          td.classList.remove('selected');
+          selectedCells = selectedCells.filter(cell=>cell!==td);
+        }else{
+          td.classList.add('selected');
+          selectedCells.push(td);
+        }
+        checkSelectedWord();
+      });
+      tr.appendChild(td);
+    });
+    table.appendChild(tr);
+  });
+
+  const wordsDiv = document.getElementById('words');
+
+  function checkSelectedWord(){
+    const letters = selectedCells.map(td=>td.textContent).join('');
+    const reversed = letters.split('').reverse().join('');
+    words.forEach(word=>{
+      if((letters===word || reversed===word) && !Array.from(wordsDiv.children).some(p=>p.textContent===word)){
+        selectedCells.forEach(td=>{
+          td.classList.remove('selected');
+          td.classList.add('found');
+        });
+        const p = document.createElement('p');
+        p.textContent = word;
+        p.classList.add('found-word');
+        wordsDiv.appendChild(p);
+        selectedCells=[];
+        foundCount++;
+        document.getElementById('score').textContent=`Mots trouvés : ${foundCount} / ${words.length}`;
+      }
+    });
+  }
+
+  document.getElementById('show-solution').addEventListener('click', ()=>{
+    words.forEach(word=>{
+      outer: for(let r=0;r<size;r++){
+        for(let c=0;c<size;c++){
+          const dirs=[[0,1],[1,0]];
+          for(const dir of dirs){
+            let dr=dir[0], dc=dir[1], match=true;
+            for(let i=0;i<word.length;i++){
+              const nr=r+i*dr, nc=c+i*dc;
+              if(nr<0||nr>=size||nc<0||nc>=size||grid[nr][nc]!==word[i]){match=false; break;}
+            }
+            if(match){
+              for(let i=0;i<word.length;i++){
+                const nr=r+i*dr, nc=c+i*dc;
+                table.rows[nr].cells[nc].classList.add('found');
+              }
+              break outer;
+            }
+          }
+        }
+      }
+      if(!Array.from(wordsDiv.children).some(p=>p.textContent===word)){
+        const p = document.createElement('p');
+        p.textContent = word;
+        p.classList.add('found-word');
+        wordsDiv.appendChild(p);
+      }
+    });
+    foundCount = words.length;
+    document.getElementById('score').textContent=`Mots trouvés : ${foundCount} / ${words.length}`;
+  });
+
+  let timeLeft = 60;
+  const timerDiv = document.getElementById('timer');
+  const timerInterval = setInterval(()=>{
+    let minutes = Math.floor(timeLeft / 60);
+    let seconds = timeLeft % 60;
+    timerDiv.textContent = `Temps restant : ${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+    if(timeLeft <= 0){
+      clearInterval(timerInterval);
+      endGame();
+    }
+    timeLeft--;
+  }, 1000);
+
+  function endGame(){
+    document.querySelectorAll('#grid td').forEach(td=>{
+      td.style.pointerEvents = 'none';
+    });
+
+    words.forEach(word=>{
+      if(!Array.from(wordsDiv.children).some(p=>p.textContent===word)){
+        const p = document.createElement('p');
+        p.textContent = word;
+        p.classList.add('found-word');
+        wordsDiv.appendChild(p);
+      }
+      outer: for(let r=0;r<size;r++){
+        for(let c=0;c<size;c++){
+          const dirs=[[0,1],[1,0]];
+          for(const dir of dirs){
+            let dr=dir[0], dc=dir[1], match=true;
+            for(let i=0;i<word.length;i++){
+              const nr=r+i*dr, nc=c+i*dc;
+              if(nr<0||nr>=size||nc<0||nc>=size||grid[nr][nc]!==word[i]){match=false; break;}
+            }
+            if(match){
+              for(let i=0;i<word.length;i++){
+                const nr=r+i*dr, nc=c+i*dc;
+                table.rows[nr].cells[nc].classList.add('found');
+              }
+              break outer;
+            }
+          }
+        }
+      }
+    });
+
+    document.getElementById('end-message').textContent = "⏳ Temps écoulé !";
+  }
+};
+</script>
+</body>
+</html>
